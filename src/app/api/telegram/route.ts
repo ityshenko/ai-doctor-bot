@@ -22,7 +22,6 @@ const WELCOME = `
 ⚠️ <i>Внимание: я не заменяю врача. При серьёзных симптомах обратитесь к специалисту.</i>
 `;
 
-// Проверка обязательных переменных окружения
 if (!BOT_TOKEN) {
   console.error('Missing TELEGRAM_BOT_TOKEN environment variable');
 }
@@ -59,15 +58,33 @@ async function downloadFile(fileId: string): Promise<Buffer> {
 
 async function getZAI() {
   try {
-    const zai = await import('z-ai-web-dev-sdk');
-    if (zai.ZAI) {
-      return new zai.ZAI();
-    } else if (zai.default && zai.default.ZAI) {
-      return new zai.default.ZAI();
-    } else {
-      console.error('ZAI class not found in SDK, available exports:', Object.keys(zai));
-      return null;
+    const zaiModule = await import('z-ai-web-dev-sdk');
+    
+    // Проверяем все возможные варианты экспорта
+    if (typeof zaiModule.ZAI === 'function') {
+      return new zaiModule.ZAI();
     }
+    
+    if (zaiModule.default) {
+      if (typeof zaiModule.default.ZAI === 'function') {
+        return new zaiModule.default.ZAI();
+      }
+      if (typeof zaiModule.default === 'function') {
+        return new zaiModule.default();
+      }
+    }
+    
+    // Ищем любой конструктор с именем ZAI
+    for (const key in zaiModule) {
+      const value = zaiModule[key as keyof typeof zaiModule];
+      if (typeof value === 'function' && 
+          (value.name === 'ZAI' || key === 'ZAI' || key === 'default')) {
+        return new (value as any)();
+      }
+    }
+    
+    console.error('ZAI class not found in SDK');
+    return null;
   } catch (error) {
     console.error('Failed to import ZAI SDK:', error);
     return null;
@@ -179,11 +196,9 @@ async function handleMessage(msg: any) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-
     if (body.message) {
       handleMessage(body.message).catch(console.error);
     }
-
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('Error in POST /api/telegram:', error);
@@ -199,7 +214,6 @@ export async function GET(req: NextRequest) {
     const host = req.headers.get('host');
     const proto = req.headers.get('x-forwarded-proto') || 'https';
     const url = `${proto}://${host}/api/telegram`;
-
     const result = await tgApi('setWebhook', { url });
     return NextResponse.json({ ...result, webhook_url: url });
   }
