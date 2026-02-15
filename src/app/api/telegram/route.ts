@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
 const WEBHOOK_URL = process.env.WEBHOOK_URL!;
 
-const histories = new Map<number, Array<{role: string; content: string}>>();
+const histories = new Map<number, Array<{role: string; content: 
+string}>>();
 
 const WELCOME = `
 🏥 <b>AI Врач</b>
@@ -19,14 +20,16 @@ const WELCOME = `
 /start — Начать сначала
 /clear — Очистить историю
 
-⚠️ <i>Внимание: я не заменяю врача. При серьёзных симптомах обратитесь к специалисту.</i>
+⚠️ <i>Внимание: я не заменяю врача. При серьёзных симптомах обратитесь к 
+специалисту.</i>
 `;
 
 if (!BOT_TOKEN) {
   console.error('Missing TELEGRAM_BOT_TOKEN environment variable');
 }
 
-async function tgApi(method: string, params: Record<string, unknown> = {}) {
+async function tgApi(method: string, params: Record<string, unknown> = {}) 
+{
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/${method}`;
   const res = await fetch(url, {
     method: 'POST',
@@ -58,11 +61,12 @@ async function downloadFile(fileId: string): Promise<Buffer> {
 
 async function getZAI() {
   try {
-    // @ts-ignore - полностью игнорируем проверку типов для этого импорта
+    // @ts-ignore - игнорируем ошибки типов
     const zaiModule = await import('z-ai-web-dev-sdk');
     
+    // Пробуем разные варианты
     // @ts-ignore
-    if (zaiModule.ZAI) {
+    if (zaiModule.ZAI && typeof zaiModule.ZAI === 'function') {
       // @ts-ignore
       return new zaiModule.ZAI();
     }
@@ -70,7 +74,8 @@ async function getZAI() {
     // @ts-ignore
     if (zaiModule.default) {
       // @ts-ignore
-      if (zaiModule.default.ZAI) {
+      if (zaiModule.default.ZAI && typeof zaiModule.default.ZAI === 
+'function') {
         // @ts-ignore
         return new zaiModule.default.ZAI();
       }
@@ -81,33 +86,6 @@ async function getZAI() {
       }
     }
     
-    // @ts-ignore
-    for (const key in zaiModule) {
-      // @ts-ignore
-      const value = zaiModule[key];
-      if (typeof value === 'function') {
-        // @ts-ignore
-        return new value();
-      }
-    }
-    
-    console.error('ZAI class not found in SDK');
-    return null;
-  } catch (error) {
-    console.error('Failed to import ZAI SDK:', error);
-    return null;
-  }
-}
-    
-    // Ищем любой конструктор с именем ZAI
-    for (const key in zaiModule) {
-      const value = zaiModule[key as keyof typeof zaiModule];
-      if (typeof value === 'function' && 
-          (value.name === 'ZAI' || key === 'ZAI' || key === 'default')) {
-        return new (value as any)();
-      }
-    }
-    
     console.error('ZAI class not found in SDK');
     return null;
   } catch (error) {
@@ -116,24 +94,28 @@ async function getZAI() {
   }
 }
 
-async function processText(text: string, chatId: number): Promise<string> {
+async function processText(text: string, chatId: number): Promise<string> 
+{
   const history = histories.get(chatId) || [];
   history.push({ role: 'user', content: text });
   
   const zai = await getZAI();
   if (!zai) return 'Ошибка: не удалось инициализировать AI';
   
+  // @ts-ignore
   const response = await zai.chat.completions.create({
     model: 'gemini-2.0-flash',
     messages: [
       {
         role: 'system',
-        content: 'Ты врач-терапевт. Помогай пациентам разбираться с симптомами. Отвечай на русском.'
+        content: 'Ты врач-терапевт. Помогай пациентам разбираться с 
+симптомами. Отвечай на русском.'
       },
       ...history
     ],
   });
 
+  // @ts-ignore
   const reply = response.choices[0].message.content;
   history.push({ role: 'assistant', content: reply });
   histories.set(chatId, history);
@@ -145,22 +127,26 @@ async function transcribeVoice(base64: string): Promise<string> {
   const zai = await getZAI();
   if (!zai) return 'Ошибка распознавания';
   
+  // @ts-ignore
   const result = await zai.audio.asr.create({
     file_base64: base64
   });
   return result.text || 'Не распознано';
 }
 
-async function analyzeImage(base64: string, prompt: string): Promise<string> {
+async function analyzeImage(base64: string, prompt: string): 
+Promise<string> {
   const zai = await getZAI();
   if (!zai) return 'Ошибка анализа изображения';
   
+  // @ts-ignore
   const response = await zai.chat.completions.create({
     model: 'gemini-2.0-flash',
     messages: [
       {
         role: 'system',
-        content: 'Ты врач. Анализируй медицинские изображения. Отвечай на русском.'
+        content: 'Ты врач. Анализируй медицинские изображения. Отвечай на 
+русском.'
       },
       {
         role: 'user',
@@ -172,6 +158,7 @@ async function analyzeImage(base64: string, prompt: string): Promise<string> {
     ],
   });
 
+  // @ts-ignore
   return response.choices[0].message.content;
 }
 
@@ -210,12 +197,14 @@ async function handleMessage(msg: any) {
     await sendAction(chatId, 'upload_photo');
     const photo = msg.photo[msg.photo.length - 1];
     const image = await downloadFile(photo.file_id);
-    const response = await analyzeImage(image.toString('base64'), msg.caption || 'Проанализируй это медицинское изображение');
+    const response = await analyzeImage(image.toString('base64'), 
+msg.caption || 'Проанализируй это медицинское изображение');
     await sendMessage(chatId, response);
     return;
   }
 
-  await sendMessage(chatId, '🤖 Пожалуйста, отправьте текст, голосовое сообщение или фото');
+  await sendMessage(chatId, '🤖 Пожалуйста, отправьте текст, голосовое 
+сообщение или фото');
 }
 
 export async function POST(req: NextRequest) {
