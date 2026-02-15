@@ -6,10 +6,8 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Отключаем генерацию статических страниц
   output: 'standalone',
-  // Уменьшаем нагрузку на память
-  swcMinify: true,
+  // Убираем swcMinify - он включен по умолчанию
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
