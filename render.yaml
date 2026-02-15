@@ -1,0 +1,9 @@
+services:
+  - type: worker
+    name: ai-doctor-bot
+    runtime: bun
+    buildCommand: bun install
+    startCommand: bun run bot
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false

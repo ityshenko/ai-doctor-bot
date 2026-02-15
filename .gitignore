@@ -1,0 +1,37 @@
+# dependencies
+node_modules/
+/.pnp
+.pnp.js
+.bun
+bun.lock
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+*.log
+*.save
+*.jar
+.env
+.env.local
+.env.production
+.env.development
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# binaries
+*.node
+*.dylib
+*.so
+*.dll
