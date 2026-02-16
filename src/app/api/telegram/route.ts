@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
 
+// Функция для отправки сообщений в Telegram
+async function sendTelegramMessage(chatId: number, text: string) {
+  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: text,
+    }),
+  });
+  
+  return response.json();
+}
+
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
   console.log('🔥🔥🔥 НОВЫЙ ЗАПРОС:', new Date().toISOString());
@@ -10,16 +28,24 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     console.log('📦 Тело запроса:', JSON.stringify(body).substring(0, 200));
     
+    // Обрабатываем сообщения
     if (body.message) {
-      console.log('💬 Текст сообщения:', body.message.text);
-      console.log('👤 Чат ID:', body.message.chat.id);
+      const chatId = body.message.chat.id;
+      const messageText = body.message.text || '';
+      
+      console.log('💬 Текст сообщения:', messageText);
+      console.log('👤 Чат ID:', chatId);
+      
+      // Отправляем ответ
+      if (messageText === '/start') {
+        await sendTelegramMessage(chatId, 'Привет! Я бот на Vercel!');
+      } else {
+        await sendTelegramMessage(chatId, `Вы написали: ${messageText}`);
+      }
     }
     
-    // Отвечаем максимально быстро
-    const response = { ok: true, time: Date.now() - startTime + 'ms' };
-    console.log('✅ Ответ отправлен:', response);
-    
-    return NextResponse.json(response);
+    // Обязательно возвращаем 200 OK для Telegram
+    return NextResponse.json({ ok: true });
     
   } catch (error) {
     console.log('💥 ОШИБКА:', error);
@@ -35,7 +61,6 @@ export async function GET() {
   });
 }
 
-// Добавим обработку OPTIONS для CORS
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
