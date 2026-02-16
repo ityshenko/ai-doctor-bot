@@ -61,6 +61,7 @@ export async function GET() {
   });
 }
 
+// Добавим обработку OPTIONS для CORS
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
